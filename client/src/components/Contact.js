@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const Contact = () => {
   const [formData, setFormData] = useState({
@@ -9,13 +9,75 @@ const Contact = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState(null);
+  const [errors, setErrors] = useState({
+    name: '',
+    email: '',
+    subject: '',
+    message: ''
+  });
+
+  // Effect to automatically clear status messages after 5 seconds
+  useEffect(() => {
+    if (submitStatus) {
+      const timer = setTimeout(() => {
+        setSubmitStatus(null);
+      }, 5000); // Clear after 5 seconds
+
+      // Cleanup function to clear the timer if component unmounts
+      return () => clearTimeout(timer);
+    }
+  }, [submitStatus]);
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+    
+    // Clear error when user types
+    if (errors[name]) {
+      setErrors({ ...errors, [name]: '' });
+    }
+  };
+
+  const validateField = (name, value) => {
+    let error = '';
+    
+    switch(name) {
+      case 'name':
+        if (value.length < 2) error = 'Name must be at least 2 characters';
+        else if (value.length > 50) error = 'Name must be less than 50 characters';
+        break;
+      case 'email':
+        if (!value.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) error = 'Please enter a valid email';
+        break;
+      case 'subject':
+        if (value.length < 5) error = 'Subject must be at least 5 characters';
+        else if (value.length > 100) error = 'Subject must be less than 100 characters';
+        break;
+      case 'message':
+        if (value.length < 10) error = 'Message must be at least 10 characters';
+        else if (value.length > 1000) error = 'Message must be less than 1000 characters';
+        break;
+      default:
+        break;
+    }
+    
+    setErrors(prev => ({ ...prev, [name]: error }));
+    return error === '';
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate all fields
+    const isNameValid = validateField('name', formData.name);
+    const isEmailValid = validateField('email', formData.email);
+    const isSubjectValid = validateField('subject', formData.subject);
+    const isMessageValid = validateField('message', formData.message);
+    
+    if (!isNameValid || !isEmailValid || !isSubjectValid || !isMessageValid) {
+      return;
+    }
+    
     setIsSubmitting(true);
     setSubmitStatus(null);
 
@@ -65,7 +127,7 @@ const Contact = () => {
                   <div className="form-floating">
                     <input 
                       type="text" 
-                      className="form-control" 
+                      className={`form-control ${errors.name ? 'is-invalid' : ''}`}
                       id="name" 
                       name="name"
                       placeholder="Your Name" 
@@ -74,13 +136,15 @@ const Contact = () => {
                       required
                     />
                     <label htmlFor="name">Your Name</label>
+                    {errors.name && <div className="invalid-feedback">{errors.name}</div>}
                   </div>
                 </div>
+                
                 <div className="col-md-6">
                   <div className="form-floating">
                     <input 
                       type="email" 
-                      className="form-control" 
+                      className={`form-control ${errors.email ? 'is-invalid' : ''}`}
                       id="email" 
                       name="email"
                       placeholder="Your Email" 
@@ -89,13 +153,15 @@ const Contact = () => {
                       required
                     />
                     <label htmlFor="email">Your Email</label>
+                    {errors.email && <div className="invalid-feedback">{errors.email}</div>}
                   </div>
                 </div>
+                
                 <div className="col-12">
                   <div className="form-floating">
                     <input 
                       type="text" 
-                      className="form-control" 
+                      className={`form-control ${errors.subject ? 'is-invalid' : ''}`}
                       id="subject" 
                       name="subject"
                       placeholder="Subject" 
@@ -104,12 +170,14 @@ const Contact = () => {
                       required
                     />
                     <label htmlFor="subject">Subject</label>
+                    {errors.subject && <div className="invalid-feedback">{errors.subject}</div>}
                   </div>
                 </div>
+                
                 <div className="col-12">
                   <div className="form-floating">
                     <textarea 
-                      className="form-control" 
+                      className={`form-control ${errors.message ? 'is-invalid' : ''}`}
                       placeholder="Message" 
                       id="message" 
                       name="message"
@@ -119,22 +187,40 @@ const Contact = () => {
                       required
                     ></textarea>
                     <label htmlFor="message">Message</label>
+                    {errors.message && <div className="invalid-feedback">{errors.message}</div>}
                   </div>
                 </div>
+                
                 <div className="col-12">
                   <button 
                     className="btn btn-primary w-100 py-3" 
                     type="submit"
                     disabled={isSubmitting}
                   >
-                    {isSubmitting ? 'Sending...' : 'Send Message'}
+                    {isSubmitting ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        Sending...
+                      </>
+                    ) : (
+                      'Send Message'
+                    )}
                   </button>
                 </div>
                 
                 {submitStatus && (
                   <div className="col-12">
-                    <div className={`alert alert-${submitStatus.type === 'success' ? 'success' : 'danger'}`}>
+                    <div 
+                      className={`alert alert-${submitStatus.type === 'success' ? 'success' : 'danger'} alert-dismissible fade show`}
+                      role="alert"
+                    >
                       {submitStatus.message}
+                      <button 
+                        type="button" 
+                        className="btn-close" 
+                        onClick={() => setSubmitStatus(null)}
+                        aria-label="Close"
+                      ></button>
                     </div>
                   </div>
                 )}
@@ -142,7 +228,6 @@ const Contact = () => {
             </form>
           </div>
           
-          {/* The rest of your contact section remains the same */}
           <div className="col-lg-6">
             <div className="position-relative rounded overflow-hidden map-container">
               <a 
